@@ -1,0 +1,193 @@
+---
+title: "Project Markdown"
+author: "Nojoud Almohanna"
+date: "10/10/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Developing a model to describe bacterial growth
+
+The Bacterial growth data below obtained from a V. natriegens (a marine bacterium) experiment which aimed to examine the growth rate of V. natriegens in a laboratory.
+The goal is to build discrete dynamical system models describing its population growth.
+For more details see <https://mathinsight.org/bacteria_growth_initial_model>.
+
+The bacteria population size was recorded every 16 minutes.
+
+#### Read the data
+
+```{r}
+bacden <- read.csv("~/Desktop/CS 510/MidtermProject/ Bacterial density data.csv")
+head(bacden)
+```
+#### Visualizing population density versus time
+
+```{r}
+plot(x = bacden$Time, y = bacden$Population.Density,col = 'black', bg = 'red', pch = 21)
+```
+
+
+
+
+It's clear that the density is increasing faster as the time progresses.
+
+#### Calculating population changes
+
+```{r}
+counts = bacden$Population.Density
+l = counts[-1]-counts[-length(counts)]
+c <- round(l, 3)
+c
+```
+
+#### Visualizing population change versus time
+
+```{r}
+plot(x=bacden$Time, y=c[1:length(bacden$Time)], col = 'black', bg = 'red', pch = 21)
+```
+
+
+
+The population change increases as a function of time.
+
+## Fitting a linear model to population change versus density
+
+```{r}
+library(growthrates)
+fit <- fit_easylinear(bacden$Time, l[1:length(bacden$Time)])
+summary(fit)
+```
+
+#### Plotting population change versus population size
+
+```{r}
+plot(fit, log = "y") #log-scale
+```
+```{r}
+coef(fit) # exponential growth parameters
+```
+
+```{r}
+deviance(fit)  # residual sum of squares
+```
+
+```{r}
+rsquared(fit)  # coefficient of determination
+```
+
+## Predicting the growth under dynamic conditions
+
+In predictive microbiology mathematical models are usually divided in primary and secondary models.
+
+- **Primary models** describe the variation of the population size against time. 
+
+- **Secondary models** describe the relationship between the parameters of the primary model and the environmental conditions.
+
+
+The **biogrowth** package can be used for simulating growth under dynamic environmental conditions using **predict_dynamic_growth()** function. This function combines primary and secondary growth models. It has 7 arguments:
+
+- times: Numeric vector of time points for the calculations.
+- env_conditions: A tibble describing the variation of the environmental conditions.
+- primary_pars: A named list describing the model parameters of the primary model.
+- secondary_models: A nested list defining the secondary model(s).
+- ...: Additional arguments passed to the numeric solver of the differential equation.
+- check: Whether to do some validity checks of model parameters (TRUE by default).
+- formula: A one-sided formula describing the x variable in env_conditions.
+
+
+I will consider two environmental factors: *temperature* and *pH*, defined using a tibble.
+
+```{r}
+library(ggplot2)
+library(tibble)
+my_conditions <- tibble(Time=c(0, 5, 80),
+                         temperature = c(20, 30, 35),
+                        pH = c(7, 6.5, 5))
+```
+
+#### Temperature plot
+
+```{r}
+ggplot(my_conditions) + geom_line(aes(x = Time, y = temperature))
+```
+
+#### PH plot
+
+```{r}
+ggplot(my_conditions) + geom_line(aes(x = Time, y = pH))
+```
+
+
+
+#### Define model parameters
+
+
+```{r}
+# For dynamic conditions,biogrowth uses the Baranyi growth model as primary model.
+
+my_primary <- list(mu_opt = .9, # the maximum specific growth rate
+             Nmax = 1e8, # the maximum growth rate
+             N0 = 0.022, # the initial population size
+             Q0 = 1e-3)
+```
+
+```{r}
+sec_temperature <- list(model = "Zwietering",
+                        xmin = 25,
+                        xopt = 35,
+                        n = 1)
+```
+
+```{r}
+sec_pH <- list(model = "CPM",
+               xmin = 5.5,
+               xopt = 6.5,
+               xmax = 7.5,
+               n = 2)
+```
+
+```{r}
+my_secondary <- list(
+    temperature = sec_temperature,
+    pH = sec_pH
+    )
+```
+
+```{r}
+my_times <- seq(0, 50, length = 1000)
+```
+
+```{r}
+library(biogrowth)
+dynamic_prediction <- predict_dynamic_growth(my_times,
+                       my_conditions, my_primary,
+                       my_secondary,
+                       formula = . ~ Time)
+
+```
+
+#### Simulation
+
+```{r}
+dynamic_prediction$simulation
+```
+#### Plot the results
+```{r}
+plot(dynamic_prediction)
+```
+
+
+```{r}
+# plot some environmental factor with add_factor
+plot(dynamic_prediction, add_factor = "temperature")
+```
+
+
+```{r}
+# Time to reach a given population size
+time_to_logcount(dynamic_prediction, 6)
+```
+
