@@ -1,34 +1,51 @@
 ---
-title: "Project Markdown"
+title: "Developing a model to describe bacterial growth"
 author: "Nojoud Almohanna"
-date: "10/10/2021"
-output: html_document
+date: "11/05/2021"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Developing a model to describe bacterial growth
+## Description
 
-The Bacterial growth data below obtained from a V. natriegens (a marine bacterium) experiment which aimed to examine the growth rate of V. natriegens in a laboratory.
-The goal is to build discrete dynamical system models describing its population growth.
+One important dynamical process in Microbiology is the growth of populations of organisms like bacteria. They reproduce through binary fission, which is a form of asexual reproduction, where single cells divide asexually into two cells, subsequently the two cells divide to form four cells, and so on. The time required for a cell to mature, and divide is approximately the same for any two cells. The increase in a bacterial population is described by a discrete dynamical system model. The goal of this project is to understand and analyze bacterial growth.
+
+## Data
+The Bacterial growth data below obtained from a V. natriegens (a marine bacterium) experiment which aimed to examine the growth rate of V. natriegens in a laboratory.The goal is to build discrete dynamical system models describing its population growth.
 For more details see <https://mathinsight.org/bacteria_growth_initial_model>.
 
 The bacteria population size was recorded every 16 minutes.
 
-#### Read the data
 
 ```{r}
+# Load and read the dataset
 bacden <- read.csv("~/Desktop/CS 510/MidtermProject/ Bacterial density data.csv")
 head(bacden)
 ```
-#### Visualizing population density versus time
 
 ```{r}
-plot(x = bacden$Time, y = bacden$Population.Density,col = 'black', bg = 'red', pch = 21)
+# Load the required packages
+library(growthrates)
+library(ggplot2)
+library(tibble)
+library(biogrowth)
 ```
 
+
+### Exploratory Data Analysis
+#### Visualizing population density versus time
+
+
+
+```{r}
+plot(x = bacden$Time, y = bacden$Population.Density,col = 'black', bg = 'red', xlab="Time", ylab="Density",pch = 21)
+```
 
 
 
@@ -43,12 +60,14 @@ c <- round(l, 3)
 c
 ```
 
+
+
+
 #### Visualizing population change versus time
 
 ```{r}
-plot(x=bacden$Time, y=c[1:length(bacden$Time)], col = 'black', bg = 'red', pch = 21)
+plot(x=bacden$Time,y=c(1:length(bacden$Time)), col = 'black', bg = 'red', xlab="Time", ylab="Pop changes", pch = 21)
 ```
-
 
 
 The population change increases as a function of time.
@@ -56,8 +75,8 @@ The population change increases as a function of time.
 ## Fitting a linear model to population change versus density
 
 ```{r}
-library(growthrates)
-fit <- fit_easylinear(bacden$Time, l[1:length(bacden$Time)])
+# Print out the summary
+fit <- fit_easylinear(bacden$Time, c(1:length(bacden$Time)))
 summary(fit)
 ```
 
@@ -101,8 +120,6 @@ The **biogrowth** package can be used for simulating growth under dynamic enviro
 I will consider two environmental factors: *temperature* and *pH*, defined using a tibble.
 
 ```{r}
-library(ggplot2)
-library(tibble)
 my_conditions <- tibble(Time=c(0, 5, 80),
                          temperature = c(20, 30, 35),
                         pH = c(7, 6.5, 5))
@@ -161,7 +178,6 @@ my_times <- seq(0, 50, length = 1000)
 ```
 
 ```{r}
-library(biogrowth)
 dynamic_prediction <- predict_dynamic_growth(my_times,
                        my_conditions, my_primary,
                        my_secondary,
@@ -172,9 +188,10 @@ dynamic_prediction <- predict_dynamic_growth(my_times,
 #### Simulation
 
 ```{r}
+# The results of the simulation
 dynamic_prediction$simulation
 ```
-#### Plot the results
+#### Visualize the simulation
 ```{r}
 plot(dynamic_prediction)
 ```
@@ -182,12 +199,22 @@ plot(dynamic_prediction)
 
 ```{r}
 # plot some environmental factor with add_factor
-plot(dynamic_prediction, add_factor = "temperature")
+plot(dynamic_prediction, 
+     add_factor = "temperature",
+     label_y1 = "Microbial count (log CFU/ml)", 
+     label_y2 = "Storage temperature (ºC)",
+     line_col = "pink", 
+     line_size = 2, line_type2 = 1) + xlab("Storage time (h)")
 ```
 
+#### Predicting the time to reach a given population size
 
 ```{r}
-# Time to reach a given population size
+# the time required to reach 6 log CFU/ml in the dynamic prediction
 time_to_logcount(dynamic_prediction, 6)
 ```
+
+
+
+
 
